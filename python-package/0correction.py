@@ -2,7 +2,10 @@ import cv2
 import os
 import logging
 from insightface.app import FaceAnalysis
-from insightface.data import get_image as ins_get_image
+from contextlib import redirect_stdout, redirect_stderr
+
+# 设置 ONNX Runtime 的日志级别
+os.environ["ORT_LOG_LEVEL"] = "FATAL"
 
 def initialize_face_analysis():
     """初始化并返回配置的 FaceAnalysis 实例。"""
@@ -57,8 +60,8 @@ def process_images(input_folder, output_folder=None):
             # 适当增加边界（例如扩大 20%）
             width = x2 - x1
             height = y2 - y1
-            padding_x = int(0.1 * width)  # 增加 20% 宽度
-            padding_y = int(0.1 * height)  # 增加 20% 高度
+            padding_x = int(0.3 * width)  # 增加 20% 宽度
+            padding_y = int(0.3 * height)  # 增加 20% 高度
 
             # 计算新的边界，确保不会超出图片范围
             x1 = max(0, x1 - padding_x)

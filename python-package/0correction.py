@@ -5,7 +5,7 @@ from insightface.app import FaceAnalysis
 from insightface.data import get_image as ins_get_image
 
 def initialize_face_analysis():
-    """初始化并返回配置的 FaceAnalysis 实例。"""
+    """Initialize and return a configured FaceAnalysis instance."""
     app = FaceAnalysis(allowed_modules=['detection'], providers=['CUDAExecutionProvider', 'CPUExecutionProvider'], download=False)
     app.prepare(ctx_id=0, det_size=(640, 640))
     return app
@@ -53,6 +53,18 @@ def process_images(input_folder, output_folder=None):
             # 获取人脸位置
             bbox = face.bbox.astype(int)  # 人脸框坐标 [x1, y1, x2, y2]
             x1, y1, x2, y2 = bbox
+
+            # 适当增加边界（例如扩大 20%）
+            width = x2 - x1
+            height = y2 - y1
+            padding_x = int(0.1 * width)  # 增加 20% 宽度
+            padding_y = int(0.1 * height)  # 增加 20% 高度
+
+            # 计算新的边界，确保不会超出图片范围
+            x1 = max(0, x1 - padding_x)
+            y1 = max(0, y1 - padding_y)
+            x2 = min(img.shape[1], x2 + padding_x)
+            y2 = min(img.shape[0], y2 + padding_y)
 
             # 裁剪人脸区域
             face_img = img[y1:y2, x1:x2]

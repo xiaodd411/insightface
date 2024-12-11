@@ -5,7 +5,7 @@ from insightface.app import FaceAnalysis
 from insightface.data import get_image as ins_get_image
 
 def initialize_face_analysis():
-    """Initialize and return a configured FaceAnalysis instance."""
+    """初始化并返回配置的 FaceAnalysis 实例。"""
     app = FaceAnalysis(allowed_modules=['detection'], providers=['CUDAExecutionProvider', 'CPUExecutionProvider'], download=False)
     app.prepare(ctx_id=0, det_size=(640, 640))
     return app

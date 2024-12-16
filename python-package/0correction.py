@@ -9,7 +9,7 @@ os.environ["ORT_LOG_LEVEL"] = "FATAL"
 
 def initialize_face_analysis():
     """初始化并返回配置的 FaceAnalysis 实例。"""
-    app = FaceAnalysis(allowed_modules=['detection'], providers=['CUDAExecutionProvider', 'CPUExecutionProvider'], download=False)
+    app = FaceAnalysis(allowed_modules=['detection', 'recognition'], providers=['CUDAExecutionProvider', 'CPUExecutionProvider'], download=False)
     app.prepare(ctx_id=0, det_size=(640, 640))
     return app
 

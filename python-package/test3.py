@@ -13,7 +13,7 @@ db_file = 'face_db.pkl'
 
 # 读取待识别的图片
 # img_path = 'E:\\Desktop\\tetst\\0000000000000000241107172225647000000000000057516.jpg'
-# img_path = 'E:\\Desktop\\FaceRecognition\\lgh\\222.png'
+# img_path = 'E:\\Desktop\\FaceRecognition\\lgh\\1.png'
 img_path = 'E:\\Desktop\\FaceRecognition\\lgh\\zjz.jpg'
 img = cv2.imread(img_path)
 

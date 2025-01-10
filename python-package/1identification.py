@@ -141,6 +141,8 @@ if __name__ == "__main__":
     # 设置数据库路径和图片文件夹路径
     database_folder = 'C:\\Users\\xq\\Desktop\\project\\insightface\\python-package\\data\\template_correction'  # 这是存储数据库的文件夹
     to_recognize_folder = 'C:\\Users\\xq\\Desktop\\project\\insightface\\python-package\\data\\discern_correction'  # 待识别的图片文件夹
+    database_folder = 'C:\\Users\\xq\\Desktop\\project\\insightface\\python-package\\data\\template'  # 这是存储数据库的文件夹
+    to_recognize_folder = 'C:\\Users\\xq\\Desktop\\project\\insightface\\python-package\\data\\discern'  # 待识别的图片文件夹
 
     # 加载或初始化数据库
     face_db = load_face_db()

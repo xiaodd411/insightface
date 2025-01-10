@@ -1,0 +1,50 @@
+FROM ubuntu:20.04
+
+# 设置环境变量以禁用交互式配置界面
+ENV DEBIAN_FRONTEND=noninteractive
+
+# 更换清华源 安装必要的工具和库
+
+RUN sed -i s:/archive.ubuntu.com:/mirrors.tuna.tsinghua.edu.cn/ubuntu:g /etc/apt/sources.list \
+    && apt-get clean \
+    && apt-get -y update --fix-missing \
+    && apt-get install -y \
+    make build-essential libssl-dev zlib1g-dev \
+    libbz2-dev libreadline-dev libsqlite3-dev wget curl llvm \
+    libncurses5-dev libncursesw5-dev xz-utils tk-dev libffi-dev \
+    liblzma-dev python-openssl git libc++1 \
+    && rm -rf /var/lib/apt/lists/*
+
+
+RUN curl https://pyenv.run | bash
+
+# 设置环境变量
+ENV PYENV_ROOT="/root/.pyenv"
+ENV PATH="$PYENV_ROOT/shims:$PYENV_ROOT/bin:$PATH"
+
+# 安装 pyenv 插件
+RUN eval "$(pyenv init --path)" \
+    && eval "$(pyenv init -)" \
+    && eval "$(pyenv virtualenv-init -)" \
+    && pyenv install 3.9.13 \
+    && pyenv global 3.9.13 \
+    && pyenv rehash
+
+
+# 安装 PyInstaller
+RUN pip install pyinstaller
+
+# 安装 Python 依赖
+COPY ./requirements.txt /app/requirements.txt
+
+WORKDIR /app
+
+RUN pip install -r requirements.txt
+
+# 将当前目录的内容复制到 /app 目录
+COPY ./web-demos/src_recognition /app
+
+# 运行 PyInstaller 打包命令
+CMD ["pyinstaller", "--onefile", "--name=PointMatch","main.py"]
+
+

@@ -2,7 +2,7 @@
 # @Organization  : insightface.ai
 # @Author        : Jia Guo
 # @Time          : 2021-05-04
-# @Function      : 
+# @Function      :
 
 import numpy as np
 import cv2
@@ -42,7 +42,7 @@ class ArcFaceONNX:
         self.input_std = input_std
         #print('input mean and std:', self.input_mean, self.input_std)
         if self.session is None:
-            self.session = onnxruntime.InferenceSession(self.model_file, providers=['CUDAExecutionProvider'])
+            self.session = onnxruntime.InferenceSession(self.model_file, providers=['CPUExecutionProvider'])
         input_cfg = self.session.get_inputs()[0]
         input_shape = input_cfg.shape
         input_name = input_cfg.name
@@ -77,7 +77,7 @@ class ArcFaceONNX:
         if not isinstance(imgs, list):
             imgs = [imgs]
         input_size = self.input_size
-        
+
         blob = cv2.dnn.blobFromImages(imgs, 1.0 / self.input_std, input_size,
                                       (self.input_mean, self.input_mean, self.input_mean), swapRB=True)
         net_out = self.session.run(self.output_names, {self.input_name: blob})[0]

@@ -1,0 +1,1 @@
+pyinstaller --onefile --collect-binaries=onnx --hidden-import=onnx --hidden-import=onnx_cpp2py_export --add-binary "C:\Users\xq\Desktop\project\insightface\venv1\Lib\site-packages\onnx\onnx_cpp2py_export.cp311-win_amd64.pyd;onnx" main.py

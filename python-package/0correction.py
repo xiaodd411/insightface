@@ -91,6 +91,7 @@ if __name__ == "__main__":
     input_folder = input("请输入要处理的图片文件夹路径: ").strip()
     if not os.path.isdir(input_folder):
         logging.error("输入的路径无效，请提供有效的文件夹路径。")
+        exit(10)
     else:
         output_folder = input("请输入输出文件夹路径（或留空以使用默认值）: ").strip()
         process_images(input_folder, output_folder if output_folder else None)

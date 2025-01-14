@@ -9,7 +9,7 @@ os.environ["ORT_LOG_LEVEL"] = "FATAL"
 def initialize_face_analysis():
     """初始化并返回配置的 FaceAnalysis 实例。"""
     app = FaceAnalysis(allowed_modules=['detection'], providers=['CUDAExecutionProvider', 'CPUExecutionProvider'], download=False)
-    app.prepare(ctx_id=0, det_size=(640, 640),det_thresh=0.9)
+    app.prepare(ctx_id=0, det_size=(640, 640),det_thresh=0.7)
     return app
 
 def process_images(input_folder):
@@ -25,6 +25,9 @@ def process_images(input_folder):
     no_face_images = []
     total_images = 0
     face_images = 0
+
+    output_folder = f"{input_folder}_det_thresh_{app.det_thresh}"
+    os.makedirs(output_folder, exist_ok=True)
 
     # 遍历输入路径下的所有图片文件
     for file_name in os.listdir(input_folder):
@@ -48,16 +51,22 @@ def process_images(input_folder):
             logging.warning(f"未检测到人脸: {file_name}")
             no_face_images.append(file_path)
         else:
+            # 输出人脸检测的分数
+            for face in faces:
+                logging.info(f"{file_name}人脸检测分数: {face.det_score:.2f}")
             face_images += 1
+            # 将人脸信息的文件复制一份到另一个文件夹
+            output_path = os.path.join(output_folder, file_name)
+            cv2.imwrite(output_path, img)
 
-    # 打印出无人脸的图片名称并依次显示
-    for img_path in no_face_images:
-        img = cv2.imread(img_path)
-        cv2.imshow("No Face Detected", img)
-        key = cv2.waitKey(0)
-        if key == 13:  # Enter key
-            face_images += 1
-        cv2.destroyAllWindows()
+    # # 打印出无人脸的图片名称并依次显示
+    # for img_path in no_face_images:
+    #     img = cv2.imread(img_path)
+    #     cv2.imshow("No Face Detected", img)
+    #     key = cv2.waitKey(0)
+    #     if key == 13:  # Enter key
+    #         face_images += 1
+    #     cv2.destroyAllWindows()
 
     # 计算识别率和漏检率
     recognition_rate = (face_images / total_images) * 100 if total_images > 0 else 0

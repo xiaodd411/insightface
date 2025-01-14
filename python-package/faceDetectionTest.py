@@ -49,6 +49,9 @@ def process_images(input_folder):
             logging.warning(f"未检测到人脸: {file_name}")
             no_face_images.append(file_name)
             continue
+        # 输出人脸检测的分数
+        for face in faces:
+            logging.info(f"{file_name}人脸检测分数: {face.det_score:.2f}")
     endTime = time.time()
     # 记录花费时间
     logging.info(f"总花费时间: {endTime - startTime:.2f} 秒")

@@ -154,10 +154,10 @@ if __name__ == "__main__":
     face_db = load_face_db()
 
     # 处理数据库文件夹，更新数据库
-    process_database_folder(face_db, database_folder)
+    # process_database_folder(face_db, database_folder)
     save_face_db(face_db)
 
-    threshold=0.60
+    threshold=0.30
     # 处理待识别文件夹并输出识别结果
     recognize_faces_in_folder(face_db,f'F:\\project\\insightface\\python-package\\test\\11_det_thresh_0.7_recognize_thresh_{threshold:.2f}_res',threshold)
     # input_folder = input("按回车键结束: ").strip()

@@ -71,6 +71,9 @@ class ArcFaceONNX:
         feat1 = feat1.ravel()
         feat2 = feat2.ravel()
         sim = np.dot(feat1, feat2) / (norm(feat1) * norm(feat2))
+        print('sim:', sim)
+        print('sim1:', np.dot(feat1 / norm(feat1), feat2 / norm(feat2)))
+
         return sim
 
     def get_feat(self, imgs):

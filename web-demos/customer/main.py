@@ -5,6 +5,8 @@ import onnxruntime
 from insightface.app import FaceAnalysis
 from typing import List
 
+from numpy.linalg import norm
+
 # 设置 ONNX Runtime 的日志级别
 os.environ["ORT_LOG_LEVEL"] = "FATAL"
 onnxruntime.set_default_logger_severity(3)
@@ -16,29 +18,34 @@ def initialize_face_analysis():
     return app
 
 def process_image(image_path, app):
-    """处理单张图片并返回检测结果，包括是否检测到人脸，得分，特征向量等"""
-    img = cv2.imread(image_path)
-    if img is None:
-        return {image_path: {"face_found": False, "score": None, "feature": None, "message": "无法读取图片"}}
+    result = []
+    try:
+        """处理单张图片并返回检测结果，包括是否检测到人脸，得分，特征向量等"""
+        img = cv2.imread(image_path)
+        if img is None:
+            return {image_path: {"face_found": False, "score": None, "feature": None, "message": "无法读取图片"}}
 
-    # 获取人脸信息
-    faces = app.get(img)
-    if not faces:
-        return {image_path: {"face_found": False, "score": None, "feature": None, "message": "未检测到人脸"}}
+        # 获取人脸信息
+        faces = app.get(img)
+        if not faces:
+            return {image_path: {"face_found": False, "score": None, "feature": None, "message": "未检测到人脸"}}
 
-    # 遍历检测到的人脸并返回相关信息
-    result = {}
-    for i, face in enumerate(faces):
-        bbox = face.bbox.astype(int)  # 人脸框坐标 [x1, y1, x2, y2]
-        score = face.det_score  # 人脸得分
-        feature = face.normed_embedding  # 归一化的人脸特征向量
-        result = {
-            "face_found": True,
-            "score": score,
-            "feature": feature.tolist(),  # 将 NumPy 数组转换为列表
-            "message": "检测到人脸"
-        }
-    return {image_path: result}
+        # 遍历检测到的人脸并返回相关信息
+
+        for i, face in enumerate(faces):
+            bbox = face.bbox.astype(int)  # 人脸框坐标 [x1, y1, x2, y2]
+            score = face.det_score  # 人脸得分
+            feature = face.normed_embedding  # 归一化的人脸特征向量
+            result.append({
+                "face_found": True,
+                "score": float(score),
+                "feature": (feature / norm(feature)).tolist(),  # 将 NumPy 数组转换为列表
+                # "message": "检测到人脸"
+            })
+        return {image_path: result}
+    except Exception as e:
+        result.append({"face_found": False, "score": None, "feature": None, "message": "处理图片时出错:"+str(e)})
+        return {image_path: result}
 
 def process_directory(directory_path, app):
     """处理文件夹中的所有图片文件，返回每张图片的检测结果"""
@@ -61,12 +68,12 @@ def func(action, input_path):
         if os.path.isdir(input_path):
             results = process_directory(input_path, app)
             result_json = {k: v for d in results for k, v in d.items()}  # 合并所有结果
-            print(json.dumps(result_json, ensure_ascii=False, indent=4))
+            print(json.dumps(result_json, ensure_ascii=False))
 
         # 如果是单个文件，处理该图片
         elif os.path.isfile(input_path):
             result = process_image(input_path, app)
-            print(json.dumps(result, ensure_ascii=False, indent=4))
+            print(json.dumps(result, ensure_ascii=False))
 
         else:
             # 输入路径无效，输出空的JSON map

@@ -1,4 +1,6 @@
 import os
+import shutil
+
 import cv2
 import pickle
 import logging
@@ -10,9 +12,9 @@ from insightface.app import FaceAnalysis
 
 
 # 创建人脸分析对象
-# app =  FaceAnalysis(allowed_modules=['detection', 'recognition'], providers=['CUDAExecutionProvider', 'CPUExecutionProvider'], download=False)
-app = FaceAnalysis()
-app.prepare(ctx_id=0,det_thresh=0.4)  # ctx_id=0 使用GPU，-1 使用CPU
+app =  FaceAnalysis(allowed_modules=['detection', 'recognition'], providers=['CPUExecutionProvider'], download=False)
+# app = FaceAnalysis()
+app.prepare(ctx_id=-1)  # ctx_id=0 使用GPU，-1 使用CPU
 
 # 设置日志配置
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -106,19 +108,24 @@ def recognize_faces_in_folder(input_folder, db):
             if max_similarity >= similarity_threshold:
                 fixed_length_path = best_match_user.ljust(10)
                 logging.info(f" {file_name}的识别结果：{fixed_length_path}，----相似度：{max_similarity:.4f}")
+                # 将该图片移动到识别结果文件夹，文件名以当前文件名+识别结果+相似度 命名 识别结果文件夹在当前文件夹的名字后加上"_result"
+                result_folder = input_folder + "_recognition_result"
+                if not os.path.exists(result_folder):
+                    os.makedirs(result_folder)
+                shutil.copy(file_path, os.path.join(result_folder, f"{file_name}_{best_match_user}_{max_similarity:.4f}.jpg"))
             else:
                 logging.info("无法识别此人，可能是陌生人。")
 
 if __name__ == "__main__":
     # 设置数据库路径和图片文件夹路径
-    database_folder = 'C:\\Users\\xq\\Desktop\\project\\insightface\\python-package\\test\\证件照'  # 这是存储数据库的文件夹
-    to_recognize_folder = 'C:\\Users\\xq\\Desktop\\project\\insightface\\python-package\\test\\11-1'  # 待识别的图片文件夹
+    database_folder = 'test\\证件照'  # 这是存储数据库的文件夹
+    to_recognize_folder = 'test\\11-1'  # 待识别的图片文件夹
 
     # 加载或初始化数据库
     face_db = load_face_db()
 
     # 处理数据库文件夹，更新数据库
-    process_database_folder(face_db, database_folder)
+    # process_database_folder(face_db, database_folder)
     save_face_db(face_db)
 
     # 处理待识别文件夹并输出识别结果

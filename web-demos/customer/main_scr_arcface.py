@@ -35,6 +35,8 @@ def parse_args() -> argparse.Namespace:
 
 def process_image(image_path: str) -> Dict[str, Any]:
     res = []
+    # 获取图片文件名称(不包含后缀)
+    image_name = osp.splitext(osp.basename(image_path))[0]
     try:
         image = cv2.imread(image_path)
         # 使用SCRFD执行面部检测
@@ -42,29 +44,30 @@ def process_image(image_path: str) -> Dict[str, Any]:
 
         if bboxes.shape[0] == 0:
             res.append({
-                "face_found": False,
+                "found": False,
                 "score": None,
                 "feature": None,
                 "message": "未检测到人脸"
             })
-            return {image_path: res}
+            return {image_name: res}
 
         for i, bbox in enumerate(bboxes):
+            # todo 增加人脸部分切割并保存到以当前图片名称为文件夹下的功能
             # 提取检测到的面孔的置信度得分
             score = bbox[4]  # 置信度得分在Bboxes数组的第五列中
             kps = kpss[i]
             feat = rec.get(image, kps)
             # TODO 这里的特征向量非归一化的，需要归一化
             res.append({
-                "face_found": True,
+                "found": True,
                 "score": float(score),
                 "feature": (feat / norm(feat)).tolist(),
                 # "message": "Face found"
             })
-        return {image_path: res}
+        return {image_name: res}
     except Exception as e:
-        res.append({"face_found": False, "score": None, "feature": None, "message": "处理图片时出错:" + str(e)})
-        return {image_path: res}
+        res.append({"found": False, "score": None, "feature": None, "message": "处理图片时出错:" + str(e)})
+        return {image_name: res}
 
 
 def process_directory(directory_path: str) -> Dict[str, Any]:
@@ -99,4 +102,4 @@ def func(args) -> str:
 if __name__ == '__main__':
 
     args = parse_args()
-    print(func(args))
+    print("result",func(args))

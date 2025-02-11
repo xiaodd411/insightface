@@ -27,13 +27,55 @@ rec.prepare(0)
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument('action', type=str, choices=['detection'],
-                        help="Action to perform: 'detection' for face detection")
+    parser.add_argument('action', type=str, choices=['detection', 'detectionAndProcess'],
+                        help="Action to perform: 'detection' for face detection, 'detectionAndProcess' for detection and cropping")
     parser.add_argument('input_path', type=str, help="Image file or directory for processing")
     return parser.parse_args()
 
 
-def process_image(image_path: str) -> Dict[str, Any]:
+def expand_bbox(bbox, scale=1.2, img_width=None, img_height=None):
+    """扩大人脸框并确保不会超出图像边界"""
+    x1, y1, x2, y2 = bbox
+    width = x2 - x1
+    height = y2 - y1
+
+    # 增加边界
+    new_width = int(width * scale)
+    new_height = int(height * scale)
+
+    # 重新计算边界
+    new_x1 = max(x1 - (new_width - width) // 2, 0)
+    new_y1 = max(y1 - (new_height - height) // 2, 0)
+    new_x2 = min(new_x1 + new_width, img_width)
+    new_y2 = min(new_y1 + new_height, img_height)
+
+    return [new_x1, new_y1, new_x2, new_y2]
+
+
+def save_cropped_face(img, bbox, image_name, output_dir, face_index):
+    """裁剪人脸并保存到指定目录"""
+    x1, y1, x2, y2, score = bbox.astype(int)
+
+    # 获取图像尺寸
+    img_height, img_width = img.shape[:2]
+
+    # 扩展边界，增加 20% 的边界
+    expanded_bbox = expand_bbox([x1, y1, x2, y2], scale=1.5, img_width=img_width, img_height=img_height)
+
+    # 裁剪人脸部分
+    cropped_face = img[expanded_bbox[1]:expanded_bbox[3], expanded_bbox[0]:expanded_bbox[2]]
+
+    # 创建文件夹以存储裁剪的图片
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    # 使用人脸顺序命名裁剪图片
+    cropped_image_path = os.path.join(output_dir, f"{face_index + 1}.jpg")
+    cv2.imwrite(cropped_image_path, cropped_face)  # 保存裁剪图片
+    return cropped_image_path
+
+
+def process_image(image_path: str, process_faces=False) -> Dict[str, Any]:
     res = []
     # 获取图片文件名称(不包含后缀)
     image_name = osp.splitext(osp.basename(image_path))[0]
@@ -51,31 +93,46 @@ def process_image(image_path: str) -> Dict[str, Any]:
             })
             return {image_name: res}
 
+        # 创建一个存储裁剪图像的文件夹
+        output_dir = osp.join(osp.dirname(image_path), image_name)
+        cropped_paths = []
+
         for i, bbox in enumerate(bboxes):
-            # todo 增加人脸部分切割并保存到以当前图片名称为文件夹下的功能
-            # 提取检测到的面孔的置信度得分
             score = bbox[4]  # 置信度得分在Bboxes数组的第五列中
             kps = kpss[i]
             feat = rec.get(image, kps)
-            # TODO 这里的特征向量非归一化的，需要归一化
-            res.append({
+
+            # 归一化特征向量
+            feat = feat / norm(feat)
+
+            result_entry = {
                 "found": True,
                 "score": float(score),
-                "feature": (feat / norm(feat)).tolist(),
-                # "message": "Face found"
-            })
+                "feature": feat.tolist(),
+                "originName": image_name,
+            }
+
+            if process_faces:
+                # 如果需要裁剪人脸，调用裁剪函数
+                cropped_image_path = save_cropped_face(image, bbox, image_name, output_dir, i)
+                result_entry["path"] = cropped_image_path
+                cropped_paths.append(cropped_image_path)
+
+            res.append(result_entry)
+
         return {image_name: res}
+
     except Exception as e:
         res.append({"found": False, "score": None, "feature": None, "message": "处理图片时出错:" + str(e)})
         return {image_name: res}
 
 
-def process_directory(directory_path: str) -> Dict[str, Any]:
+def process_directory(directory_path: str, process_faces=False) -> Dict[str, Any]:
     image_files = [osp.join(directory_path, f) for f in os.listdir(directory_path) if
                    f.lower().endswith(('jpg', 'jpeg', 'png', 'bmp', 'gif'))]
     results = {}
     for image_file in image_files:
-        result = process_image(image_file)
+        result = process_image(image_file, process_faces)
         results.update(result)
     return results
 
@@ -87,12 +144,22 @@ def func(args) -> str:
     try:
         if action == 'detection':
             if osp.isdir(input_path):
-                results = process_directory(input_path)
+                results = process_directory(input_path, process_faces=False)
             elif osp.isfile(input_path):
-                results = process_image(input_path)
+                results = process_image(input_path, process_faces=False)
             else:
                 return json.dumps({})
             return json.dumps(results)
+
+        elif action == 'detectionAndProcess':
+            if osp.isdir(input_path):
+                results = process_directory(input_path, process_faces=True)
+            elif osp.isfile(input_path):
+                results = process_image(input_path, process_faces=True)
+            else:
+                return json.dumps({})
+            return json.dumps(results, ensure_ascii=False)
+
         else:
             return json.dumps({})
     except Exception as e:
@@ -100,6 +167,5 @@ def func(args) -> str:
 
 
 if __name__ == '__main__':
-
     args = parse_args()
-    print("result",func(args))
+    print("result", func(args))

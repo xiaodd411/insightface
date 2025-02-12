@@ -42,7 +42,7 @@ def save_cropped_face(img, face, image_name, output_dir, face_index):
     img_height, img_width = img.shape[:2]
 
     # 扩展边界，增加 20% 的边界
-    expanded_bbox = expand_bbox(bbox, scale=1.5, img_width=img_width, img_height=img_height)
+    expanded_bbox = expand_bbox(bbox, scale=1.8, img_width=img_width, img_height=img_height)
 
     # 裁剪人脸部分
     cropped_face = img[expanded_bbox[1]:expanded_bbox[3], expanded_bbox[0]:expanded_bbox[2]]  # 裁剪区域

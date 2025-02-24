@@ -1,38 +1,41 @@
-FROM alpine:3.20.6
+# 使用 Alpine 3.17 镜像
+FROM alpine:3.17
 
-# 安装必要的工具和库
+# 替换 apk 镜像源为阿里云镜像源
+RUN sed -i 's|https://dl-cdn.alpinelinux.org/alpine|https://mirrors.aliyun.com/alpine|g' /etc/apk/repositories
+
+# 更新 apk 包索引
+RUN apk update
+
+# 安装必要的包，包含 Python、依赖库、构建工具和 PyInstaller
 RUN apk add --no-cache \
-    make g++ libffi-dev bash curl git \
-    libssl1.1 zlib zlib-dev \
-    libbz2 libbz2-dev libreadline libreadline-dev \
-    sqlite sqlite-dev wget xz tk-dev \
-    python3 python3-dev py3-pip
+    python3 python3-dev py3-pip \
+    bash curl g++ make libffi-dev \
+    openssl zlib zlib-dev \
+    bzip2 bzip2-dev readline readline-dev \
+    sqlite sqlite-dev wget xz tk-dev
 
-# 安装 pyenv
-RUN curl https://pyenv.run | bash
+RUN #pip install --upgrade --force-reinstall packaging
+# 安装 pyinstaller
+RUN pip install --ignore-installed pyinstaller
 
-# 设置环境变量
-ENV PYENV_ROOT="/root/.pyenv"
-ENV PATH="$PYENV_ROOT/shims:$PYENV_ROOT/bin:$PATH"
-
-# 安装 pyenv 插件
-RUN eval "$(pyenv init --path)" \
-    && eval "$(pyenv init -)" \
-    && eval "$(pyenv virtualenv-init -)" \
-    && pyenv install 3.9.13 \
-    && pyenv global 3.9.13 \
-    && pyenv rehash
-
-# 安装 PyInstaller
-RUN pip install pyinstaller
-
-# 安装 Python 依赖
-COPY ../../requirements.txt /app/requirements.txt
+# 创建并设置工作目录
 WORKDIR /app
+
+
+
+# 可选：安装项目依赖（如果需要）
+# 如果你有 requirements.txt 文件，可以在这里安装依赖
+# 安装 Python 依赖
+COPY ../../../requirements.txt /app/requirements.txt
+# COPY ./requirements.txt /app/requirements.txt
 RUN pip install -r requirements.txt
 
-# 将当前目录的内容复制到 /app 目录
-COPY ./ /app
 
+# COPY requirements.txt /app/requirements.txt
+# RUN pip install -r requirements.txt
+# 将当前目录的内容复制到 Docker 容器中的 /app 目录
+COPY . /app
+# 默认命令
 # 运行 PyInstaller 打包命令
-CMD ["pyinstaller", "--onedir", "--name=insightface", "main.py"]
+CMD ["pyinstaller", "--onedir", "--name=insightface","main.py"]

@@ -1,0 +1,38 @@
+FROM alpine:3.20.6
+
+# 安装必要的工具和库
+RUN apk add --no-cache \
+    make g++ libffi-dev bash curl git \
+    libssl1.1 zlib zlib-dev \
+    libbz2 libbz2-dev libreadline libreadline-dev \
+    sqlite sqlite-dev wget xz tk-dev \
+    python3 python3-dev py3-pip
+
+# 安装 pyenv
+RUN curl https://pyenv.run | bash
+
+# 设置环境变量
+ENV PYENV_ROOT="/root/.pyenv"
+ENV PATH="$PYENV_ROOT/shims:$PYENV_ROOT/bin:$PATH"
+
+# 安装 pyenv 插件
+RUN eval "$(pyenv init --path)" \
+    && eval "$(pyenv init -)" \
+    && eval "$(pyenv virtualenv-init -)" \
+    && pyenv install 3.9.13 \
+    && pyenv global 3.9.13 \
+    && pyenv rehash
+
+# 安装 PyInstaller
+RUN pip install pyinstaller
+
+# 安装 Python 依赖
+COPY ../../requirements.txt /app/requirements.txt
+WORKDIR /app
+RUN pip install -r requirements.txt
+
+# 将当前目录的内容复制到 /app 目录
+COPY ./ /app
+
+# 运行 PyInstaller 打包命令
+CMD ["pyinstaller", "--onedir", "--name=insightface", "main.py"]

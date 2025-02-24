@@ -45,6 +45,6 @@ RUN pip install -r requirements.txt
 COPY ./ /app
 
 # 运行 PyInstaller 打包命令
-CMD ["pyinstaller", "--onefile", "--name=PointMatch","main.py"]
+CMD ["pyinstaller", "--onedir", "--name=insightface","main.py"]
 
 

@@ -13,6 +13,7 @@ from numpy.linalg import norm
 from dotenv import load_dotenv
 from io import BytesIO
 from PIL import Image
+from concurrent.futures import ThreadPoolExecutor
 
 # 加载环境变量
 load_dotenv()
@@ -29,6 +30,13 @@ default_scale = float(os.getenv("CROP_SCALE", "1.8"))  # 默认裁剪比例
 face_analysis = FaceAnalysis(providers=['CUDAExecutionProvider', 'CPUExecutionProvider'],
                              allowed_modules=['detection', 'recognition'])
 face_analysis.prepare(ctx_id=0, det_thresh=detection_thresh, det_size=(640, 640))
+
+# 创建线程池执行器
+executor = ThreadPoolExecutor(max_workers=12)
+
+@app.on_event("shutdown")
+def shutdown_event():
+    executor.shutdown(wait=False)
 
 @app.get("/")
 async def root():
@@ -50,76 +58,64 @@ def expand_bbox(bbox, scale, img_width, img_height):
 
     return [new_x1, new_y1, new_x2, new_y2]
 
-@app.post("/detect_and_crop")
-async def detect_and_crop_faces(files: list[UploadFile] = File(...), scale: float = default_scale):
-    results = []
-
-    for file in files:
+async def process_single_file(file, scale, crop=False):
+    try:
         image_bytes = await file.read()
         np_arr = np.frombuffer(image_bytes, np.uint8)
         img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
 
         if img is None:
-            results.append({"filename": file.filename, "result": [], "message": "Invalid or corrupted image file."})
-            continue
+            return {"filename": file.filename, "result": [], "message": "Invalid image"}
 
-        faces = face_analysis.get(img)
+        # 将同步的face_analysis.get放入线程池执行
+        loop = asyncio.get_event_loop()
+        faces = await loop.run_in_executor(executor, face_analysis.get, img)
+
         file_results = []
         img_height, img_width = img.shape[:2]
 
         for face in faces:
-            bbox = list(map(int, face.bbox))
-            expanded_bbox = expand_bbox(bbox, scale, img_width, img_height)
-            cropped_face = img[expanded_bbox[1]:expanded_bbox[3], expanded_bbox[0]:expanded_bbox[2]]
-            _, buffer = cv2.imencode('.jpg', cropped_face)
-            face_base64 = base64.b64encode(buffer).decode('utf-8')
+            if crop:
+                bbox = list(map(int, face.bbox))
+                expanded_bbox = expand_bbox(bbox, scale, img_width, img_height)
+                cropped_face = img[expanded_bbox[1]:expanded_bbox[3], expanded_bbox[0]:expanded_bbox[2]]
+                _, buffer = cv2.imencode('.jpg', cropped_face)
+                face_base64 = base64.b64encode(buffer).decode('utf-8')
+            else:
+                face_base64 = None
 
             embedding = face.normed_embedding.astype(float)
-            file_results.append({
+            result = {
                 "filename": file.filename,
                 "found": True,
                 "score": float(face.det_score),
                 "feature": (embedding / norm(embedding)).tolist(),
                 "facial_area": {
-                    "x": expanded_bbox[0], "y": expanded_bbox[1], "w": expanded_bbox[2] - expanded_bbox[0], "h": expanded_bbox[3] - expanded_bbox[1]
-                },
-                "path": face_base64
-            })
+                    "x": expanded_bbox[0] if crop else int(face.bbox[0]),
+                    "y": expanded_bbox[1] if crop else int(face.bbox[1]),
+                    "w": (expanded_bbox[2] - expanded_bbox[0]) if crop else int(face.bbox[2] - face.bbox[0]),
+                    "h": (expanded_bbox[3] - expanded_bbox[1]) if crop else int(face.bbox[3] - face.bbox[1])
+                }
+            }
+            if face_base64:
+                result["path"] = face_base64
+            file_results.append(result)
 
-        results.append({"result": file_results})
+        return {"result": file_results}
+    except Exception as e:
+        logging.error(f"Error processing {file.filename}: {str(e)}")
+        return {"filename": file.filename, "result": [], "message": str(e)}
 
+@app.post("/detect_and_crop")
+async def detect_and_crop_faces(files: list[UploadFile] = File(...), scale: float = default_scale):
+    tasks = [process_single_file(file, scale, crop=True) for file in files]
+    results = await asyncio.gather(*tasks)
     return {"results": results}
 
 @app.post("/detect")
 async def detect_faces(files: list[UploadFile] = File(...)):
-    results = []
-
-    for file in files:
-        image_bytes = await file.read()
-        np_arr = np.frombuffer(image_bytes, np.uint8)
-        img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-
-        if img is None:
-            results.append({"filename": file.filename, "result": [], "message": "Invalid or corrupted image file."})
-            continue
-
-        faces = face_analysis.get(img)
-        file_results = []
-
-        for face in faces:
-            embedding = face.normed_embedding.astype(float)
-            file_results.append({
-                "filename": file.filename,
-                "found": True,
-                "score": float(face.det_score),
-                "feature": (embedding / norm(embedding)).tolist(),
-                "facial_area": {
-                    "x": int(face.bbox[0]), "y": int(face.bbox[1]), "w": int(face.bbox[2] - face.bbox[0]), "h": int(face.bbox[3] - face.bbox[1])
-                }
-            })
-
-        results.append({"result": file_results})
-
+    tasks = [process_single_file(file, scale=1.0, crop=False) for file in files]
+    results = await asyncio.gather(*tasks)
     return {"results": results}
 
 if __name__ == "__main__":

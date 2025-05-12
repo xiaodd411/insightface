@@ -23,7 +23,7 @@ logging.basicConfig(level=logging.INFO)
 
 app = FastAPI()
 http_port = int(os.getenv("HTTP_PORT", "8066"))
-detection_thresh = float(os.getenv("DETECTION_THRESH", "0.65"))
+detection_thresh = float(os.getenv("DETECTION_THRESH", "0.1"))
 default_scale = float(os.getenv("CROP_SCALE", "1.8"))  # 默认裁剪比例
 
 # 初始化人脸分析器

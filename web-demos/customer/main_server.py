@@ -65,7 +65,8 @@ async def process_single_file(file, scale, crop=False):
         img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
 
         if img is None:
-            return {"filename": file.filename, "result": [], "message": "Invalid image"}
+            # return {"filename": file.filename, "result": [], "message": "Invalid image"}
+            return {file.filename : [], "message": "Invalid image"}
 
         # 将同步的face_analysis.get放入线程池执行
         loop = asyncio.get_event_loop()
@@ -86,7 +87,7 @@ async def process_single_file(file, scale, crop=False):
 
             embedding = face.normed_embedding.astype(float)
             result = {
-                "filename": file.filename,
+                "originName": file.filename,
                 "found": True,
                 "score": float(face.det_score),
                 "feature": (embedding / norm(embedding)).tolist(),
@@ -101,10 +102,10 @@ async def process_single_file(file, scale, crop=False):
                 result["path"] = face_base64
             file_results.append(result)
 
-        return {"result": file_results}
+        return {file.filename: file_results}
     except Exception as e:
         logging.error(f"Error processing {file.filename}: {str(e)}")
-        return {"filename": file.filename, "result": [], "message": str(e)}
+        return {file.filename : [], "message": str(e)}
 
 @app.post("/detect_and_crop")
 async def detect_and_crop_faces(files: list[UploadFile] = File(...), scale: float = default_scale):
